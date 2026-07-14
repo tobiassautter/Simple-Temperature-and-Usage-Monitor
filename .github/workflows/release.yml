@@ -1,0 +1,53 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        shell: bash
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      # Self-contained single file: users need no .NET runtime installed.
+      - name: Publish
+        run: >
+          dotnet publish src/TempMonitor -c Release -r win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:DebugType=none
+          -p:Version=${{ steps.version.outputs.version }}
+          -o publish
+
+      - name: Create portable zip
+        shell: pwsh
+        run: Compress-Archive -Path publish\* -DestinationPath "TempMonitor-${{ steps.version.outputs.version }}-portable.zip"
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DMyAppVersion=${{ steps.version.outputs.version }} installer\TempMonitor.iss
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            TempMonitor-${{ steps.version.outputs.version }}-portable.zip
+            installer/Output/TempMonitor-Setup-${{ steps.version.outputs.version }}.exe
+          generate_release_notes: true

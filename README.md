@@ -24,36 +24,61 @@ one dependency, ~1% of a single core while polling once per second.
 - Tray icon with live tooltip and exit
 - Single instance, settings stored in `%AppData%\TempMonitor\settings.json`
 
-## Requirements
+## Install
 
-- Windows 10/11
-- [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0)
+Grab the latest [release](../../releases/latest):
+
+- **`TempMonitor-Setup-x.y.z.exe`** (recommended) — double-click, done. The
+  installer offers a "Start with Windows" checkbox (UAC-free autostart via
+  Task Scheduler) and installs the PawnIO sensor driver if it's missing.
+- **`TempMonitor-x.y.z-portable.zip`** — unzip and run `TempMonitor.exe`.
+  No installation, no .NET runtime needed (self-contained build).
+
+### Notes
+
 - **Administrator rights** — reading CPU package temperature requires MSR
-  access through LibreHardwareMonitor's kernel driver. The app requests
-  elevation on start; without it the CPU rows would be empty.
+  access through LibreHardwareMonitor's kernel driver, so the app requests
+  elevation on start. Without it the CPU rows show `--`.
 - **[PawnIO](https://pawnio.eu/)** (`winget install namazso.PawnIO`) — on
   Windows 11 with Memory Integrity (HVCI) enabled, the classic WinRing0
   driver is blocked and CPU temperature/power show `--`. PawnIO is a
   Microsoft-signed, HVCI-compatible replacement that LibreHardwareMonitor
-  picks up automatically.
+  picks up automatically. The setup exe handles this for you.
 
-## Build & run
+## Build from source
+
+Requires the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0):
 
 ```powershell
 dotnet publish src/TempMonitor -c Release -o publish
 ./publish/TempMonitor.exe
 ```
 
-## Start with Windows (optional)
+## Start with Windows (portable/source users)
 
-Because the app needs elevation, use Task Scheduler rather than the Startup folder:
+Because the app needs elevation, use Task Scheduler rather than the Startup
+folder — the task runs elevated without a UAC prompt at every boot:
 
 ```powershell
 $exe = (Resolve-Path .\publish\TempMonitor.exe).Path
 Register-ScheduledTask -TaskName "TempMonitor" `
   -Action (New-ScheduledTaskAction -Execute $exe) `
   -Trigger (New-ScheduledTaskTrigger -AtLogOn) `
-  -RunLevel Highest
+  -RunLevel Highest `
+  -Settings (New-ScheduledTaskSettingsSet -ExecutionTimeLimit 0 `
+    -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries)
+```
+
+(The setup exe creates this task for you when "Start with Windows" is checked.)
+
+## Releasing (maintainers)
+
+Tag a version and push it — CI builds the installer and portable zip and
+attaches them to a GitHub release:
+
+```powershell
+git tag v1.0.0
+git push origin v1.0.0
 ```
 
 ## Credits

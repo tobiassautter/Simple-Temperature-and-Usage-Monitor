@@ -11,7 +11,6 @@
     <RootNamespace>TempMonitor</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Version>1.0.0</Version>
-    <SelfContained>false</SelfContained>
   </PropertyGroup>
 
   <ItemGroup>
